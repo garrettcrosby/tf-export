@@ -14,9 +14,10 @@ warnings.filterwarnings("ignore", message="Unverified HTTPS request")
 
 
 class threadfix(object):
-    def __init__(self, url, api, sslVerify=False, cert=None):
+    def __init__(self, url, api, exclude, sslVerify=False, cert=None):
         self.url = url
         self.api = api
+        self.exclude = exclude
         self.sslVerify = sslVerify
         self.cert = cert
         self.appList = []
@@ -56,7 +57,7 @@ class threadfix(object):
         r = self.connect_handler("GET", endpoint)
         logging.info("Got applications")
         apps = r["object"]
-        self.appList = [x for x in apps]
+        self.appList = [x for x in apps if x["name"] not in self.exclude]
 
     def export(self):
         workingDir = os.getcwd()
@@ -158,7 +159,7 @@ def load_config():
         try:
             config = yaml.safe_load(stream)
             logging.info("Config loaded. \n")
-            return config["config"]
+            return config["config"], config["exclude"]
         except yaml.YAMLError as exc:
             logging.critical("Could not load config, exiting!")
             print(exc)
@@ -179,11 +180,12 @@ def config_logger():
 def main():
     config_logger()
     logging.info("Logging configured.\n")
-    config = load_config()
+    config, exclude = load_config()
     logging.info("Config loaded!\n")
     tfix_instance = threadfix(
         config["threadfix_url"],
         config["threadfix_api_key"],
+        exclude,
         sslVerify=False,
     )
     tfix_instance.make_header()
